@@ -1,15 +1,45 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
-var sassMiddleware = require('node-sass-middleware');
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+const path = require('path');
+const fs = require('fs');
+const createError = require('http-errors');
+const express = require('express');
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
+const sassMiddleware = require('node-sass-middleware');
+const webpack = require('webpack');
+const middleware = require('webpack-dev-middleware');
+const config = require('./webpack.config');
+const indexRouter = require('./routes/index');
+const usersRouter = require('./routes/users');
 
-require('./config');
+const isProd = process.env.NODE_ENV === 'production';
+const compiler = webpack(config);
 
-var app = express();
+const app = express();
+
+// webpack只在开发环境加载
+if (!isProd) {
+  app.use(
+    middleware(compiler, {
+      // webpack-dev-middleware options
+      serverSideRender: true,
+      publicPath: config.output.publicPath
+    })
+  );
+}
+
+app.use((req, res, next) => {
+  const chunks = isProd ?
+    JSON.parse(fs.readFileSync('./public/javascripts/manifest.json', 'utf-8')) :
+    res.locals.webpackStats.toJson().assetsByChunkName;
+  res.locals.chunks = chunks;
+
+  res.locals.javascript_pack = name => {
+    if (isProd) name += '.js'; // 生产的manifest带上了.js后缀
+    if (chunks[name]) return chunks[name];
+    throw Error(`未找到${name}对应的编译资源`);
+  }
+  next()
+})
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
