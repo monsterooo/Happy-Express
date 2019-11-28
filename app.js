@@ -7,11 +7,13 @@ const logger = require('morgan');
 const sassMiddleware = require('node-sass-middleware');
 const webpack = require('webpack');
 const middleware = require('webpack-dev-middleware');
+const { buildDirName } = require('./utils/config');
+const webpackHelper = require('./utils/webpack');
+const isProd = require('./utils/env');
 const config = require('./webpack.config');
 const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
 
-const isProd = process.env.NODE_ENV === 'production';
 const compiler = webpack(config);
 
 const app = express();
@@ -29,15 +31,10 @@ if (!isProd) {
 
 app.use((req, res, next) => {
   const chunks = isProd ?
-    JSON.parse(fs.readFileSync('./public/javascripts/manifest.json', 'utf-8')) :
+    JSON.parse(fs.readFileSync('./public/dist/manifest.json', 'utf-8')) :
     res.locals.webpackStats.toJson().assetsByChunkName;
   res.locals.chunks = chunks;
-
-  res.locals.javascript_pack = name => {
-    if (isProd) name += '.js'; // 生产的manifest带上了.js后缀
-    if (chunks[name]) return chunks[name];
-    throw Error(`未找到${name}对应的编译资源`);
-  }
+  res.locals.assets_pack = webpackHelper.assets_pack(chunks);
   next()
 })
 

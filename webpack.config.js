@@ -1,6 +1,8 @@
 const path = require('path');
 const ManifestPlugin = require('webpack-manifest-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const { buildDirName } = require('./utils/config');
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -11,23 +13,27 @@ module.exports = {
     application: './views/packs/application.js',
   },
   output: {
-    filename: '[name].[hash].bundle.js',
-    path: path.resolve(__dirname, './public/javascripts'),
-    publicPath: !isProd ? '/javascripts/' : '', // 线上环境打包不需要包含这个目录
+    filename: '[name].[hash].js',
+    path: path.resolve(__dirname, `./public${buildDirName}`),
+    publicPath: !isProd ? buildDirName : '', // 线上环境打包不需要包含这个目录
   },
   module: {
     rules: [
       {
         test: /\.css$/,
         use: [
-          'style-loader',
+          {
+            loader: MiniCssExtractPlugin.loader,
+          },
           'css-loader'
         ]
       },
       {
         test: /\.scss$/,
         use: [
-          "style-loader",
+          {
+            loader: MiniCssExtractPlugin.loader,
+          },
           "css-loader",
           "sass-loader"
         ]
@@ -37,5 +43,12 @@ module.exports = {
   plugins: [
     new CleanWebpackPlugin(),
     new ManifestPlugin(),
+    new MiniCssExtractPlugin({
+      // Options similar to the same options in webpackOptions.output
+      // all options are optional
+      filename: '[name].[hash].css',
+      chunkFilename: '[name].[hash].css',
+      ignoreOrder: false, // Enable to remove warnings about conflicting order
+    }),
   ]
 }
